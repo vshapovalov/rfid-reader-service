@@ -11,8 +11,7 @@ import (
 	"path/filepath"
 )
 
-//const generalUserPassword = "qPAX890JT6c&h0rJ&aBNB#mDhgzrgOT7"
-//const generalUserName = "general_user"
+const maxBuzzerInARow = 3
 
 func main() {
 	appDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
@@ -60,8 +59,8 @@ func main() {
 	defer mqttBroker.Close()
 	logger.Info("broker connected")
 
-	readerService := services.NewReaderService(readerModule, logger, config.ReverseCardNumber, config.UseBuzzerOnRead)
-	communicationService := services.NewBrokerCommunicationService(mqttBroker, config.Id)
+	readerService := services.NewReaderService(readerModule, logger, config.ReverseCardNumber, config.UseBuzzerOnRead, maxBuzzerInARow)
+	communicationService := services.NewBrokerCommunicationService(mqttBroker, config.Id, logger)
 	logger.Info("services created")
 
 	err = communicationService.Register()
@@ -81,6 +80,17 @@ func main() {
 	}()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	go readerService.ReadCards()
+
+	err = communicationService.OnBuzzRequest(func(count int) {
+		readerService.Buzz(count)
+	})
+	if err != nil {
+		logger.Crit("failed to subscribe on buzzer message", "error", err)
+		return
+	}
+
 	go func() {
 		logger.Info("main loop started")
 	mainLoop:

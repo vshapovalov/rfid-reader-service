@@ -5,6 +5,10 @@ import "encoding/json"
 const StatusOnline = "online"
 const StatusOffline = "offline"
 
+type BuzzerCount struct {
+	Count int `json:"count"`
+}
+
 type StatusInfo struct {
 	ReaderId string `json:"readerId"`
 	Status   string `json:"status"`
