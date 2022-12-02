@@ -1,6 +1,6 @@
 # Remote rfid-reader service
 
-Use connected rfid communication reader to to read cards and send cards numbers to the server via mqtt broker.
+Use connected rfid communication reader to read and send cards numbers to the server via mqtt broker.
 
 ### Configuration
 
