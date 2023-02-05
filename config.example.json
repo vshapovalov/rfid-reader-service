@@ -1,0 +1,62 @@
+{
+  "id": "workstation-1-reader-1",
+  "isDebugModeEnabled": true,
+  "reverseCardNumber": false,
+  "useBuzzerOnRead": true,
+  "cardReadingInterval": "200ms",
+  "device": {
+    "driver": "M302",
+    "M302Settings": {
+      "port": "COM4",
+      "baud": 9600,
+      "readTimeout": 1,
+      "size": 8
+    }
+  },
+  "drivers_examples": {
+    "M302": {
+      "driver": "M302",
+      "M302Settings": {
+        "port": "COM4",
+        "baud": 9600,
+        "readTimeout": 1,
+        "size": 8
+      }
+    },
+    "RFIDLIB": {
+      "driver": "RFIDLIB",
+      "RFIDLibSettings": {
+        "libDriver": "RPAN",
+        "communication": {
+          "type": "USB",
+          "settings": {
+            "serialNumber": "2072190002"
+          }
+        },
+        "communication_com": {
+          "type": "COM",
+          "settings": {
+            "comPort": "COM1",
+            // COM1
+            "comBand": "9600",
+            // 9600, 38400, 57600, 115200
+            "frame": "8E1"
+            // 8E1, 8N1, 8O1
+          }
+        },
+        "communication_net": {
+          "type": "NET",
+          "settings": {
+            "remoteIp": "192.168.0.1",
+            "remotePort": "9999"
+          }
+        }
+      }
+    }
+  },
+  "mqttBroker": {
+    "uri": "tcp://localhost:2883",
+    "username": "user",
+    "password": "secret"
+  }
+}

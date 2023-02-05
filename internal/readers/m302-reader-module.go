@@ -134,7 +134,7 @@ func (m *M302ReaderModule) Buzz() error {
 	return nil
 }
 
-func (m *M302ReaderModule) ReadCard() ([]byte, error) {
+func (m *M302ReaderModule) ReadCards() ([][]byte, error) {
 	var lastPacket *m302Packet
 	var err error
 
@@ -150,7 +150,7 @@ func (m *M302ReaderModule) ReadCard() ([]byte, error) {
 		}
 		lastPacket, err = readPacket(m.port, portReadTimeout)
 		if err == nil && lastPacket.Command == commandReadCardNumber {
-			return lastPacket.Data, nil
+			return [][]byte{lastPacket.Data}, nil
 		}
 	}
 	return nil, nil

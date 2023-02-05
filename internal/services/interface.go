@@ -18,5 +18,6 @@ type (
 		OnCardRead() chan string
 		Buzz(count int)
 		ReadCards()
+		StopCardsReading() chan bool
 	}
 )

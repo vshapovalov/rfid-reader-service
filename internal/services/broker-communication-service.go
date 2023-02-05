@@ -27,8 +27,8 @@ func (b *BrokerCommunicationService) OnBuzzRequest(handler func(count int)) erro
 	})
 }
 
-func (b *BrokerCommunicationService) SendCardNumber(cardNumber string) error {
-	return b.broker.SendMessage(b.registerTopic, NewCardReadInfo(cardNumber, b.readerId).ToByteArray(), false)
+func (b *BrokerCommunicationService) SendCardNumber(cardNumbers []string) error {
+	return b.broker.SendMessage(b.cardReadTopic, NewCardReadInfo(cardNumbers, b.readerId).ToByteArray(), false)
 }
 
 func (b *BrokerCommunicationService) Register() error {
