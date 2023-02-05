@@ -24,12 +24,12 @@ func (m *StatusInfo) ToByteArray() []byte {
 }
 
 type CardReadInfo struct {
-	CardNumber string `json:"cardNumber"`
-	ReaderId   string `json:"readerId"`
+	CardNumber []string `json:"cardNumbers"`
+	ReaderId   string   `json:"readerId"`
 }
 
-func NewCardReadInfo(cardNumber, readerId string) *CardReadInfo {
-	return &CardReadInfo{CardNumber: cardNumber, ReaderId: readerId}
+func NewCardReadInfo(cardNumbers []string, readerId string) *CardReadInfo {
+	return &CardReadInfo{CardNumber: cardNumbers, ReaderId: readerId}
 }
 
 func (m *CardReadInfo) ToByteArray() []byte {

@@ -1,26 +1,31 @@
 package services
 
 import (
+	"encoding/hex"
 	"github.com/vshapovalov/rfid-reader-service/internal/infrastructure"
 	"github.com/vshapovalov/rfid-reader-service/internal/readers"
+	"github.com/vshapovalov/rfid-reader-service/internal/utils"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const cardReadingInterval = 100 * time.Millisecond
 const actionReadCard = "readCard"
 const actionBuzz = "buzz"
+const stopServiceLoop = "stopServiceLoop"
 
 type ReaderService struct {
-	CardReadInfo      chan string
-	actions           chan string
-	logger            infrastructure.ILogger
-	readerModule      readers.IReaderModule
-	reverseCardNumber bool
-	useBuzzer         bool
-	maxBuzzerInARow   int
-	lastReadCard      int
+	CardReadInfo        chan []string
+	actions             chan string
+	serviceStopped      chan bool
+	logger              infrastructure.ILogger
+	readerModule        readers.IReaderModule
+	reverseCardNumber   bool
+	useBuzzer           bool
+	maxBuzzerInARow     int
+	lastReadCards       map[string]byte
+	cardReadingInterval time.Duration
+	isServiceStopped    bool
 }
 
 func (r *ReaderService) Buzz(count int) {
@@ -28,39 +33,52 @@ func (r *ReaderService) Buzz(count int) {
 }
 
 func (r *ReaderService) readCard() {
-	var targetCard int
-	card, err := r.readerModule.ReadCard()
+	if r.isServiceStopped {
+		return
+	}
+	cards, err := r.readerModule.ReadCards()
 	if err != nil {
 		r.logger.Error("cannot read card", "error", err)
-		r.lastReadCard = 0
+		r.lastReadCards = make(map[string]byte)
 		return
 	}
+	newCards := make([]string, 0)
+	cardsMap := make(map[string]byte)
+	for _, card := range cards {
+		if len(card) == 0 {
+			continue
+		}
+		var cardHex string
+		if r.reverseCardNumber {
+			cardHex = hex.EncodeToString(reverseArray(card))
+		} else {
+			cardHex = hex.EncodeToString(card)
+		}
 
-	if card == nil && len(card) == 0 {
-		r.lastReadCard = 0
-		return
+		cardsMap[cardHex] = 0
+
+		if _, ok := r.lastReadCards[cardHex]; !ok {
+			newCards = append(newCards, cardHex)
+			r.logger.Info("card read", "card", cardHex)
+		}
 	}
 
-	r.logger.Info("card read", "card", card)
+	r.lastReadCards = cardsMap
 
-	if r.reverseCardNumber {
-		targetCard = byteArrayToInt(reverseArray(card))
-	} else {
-		targetCard = byteArrayToInt(card)
+	if len(newCards) > 0 {
+		if r.useBuzzer {
+			r.doBuzz(1)
+		}
+
+		go func(cards []string) { r.CardReadInfo <- cards }(newCards)
 	}
 
-	if targetCard == r.lastReadCard {
-		return
-	}
-
-	r.lastReadCard = targetCard
-	if r.useBuzzer {
-		r.doBuzz(1)
-	}
-	go func(val int) { r.CardReadInfo <- strconv.Itoa(val) }(targetCard)
 }
 
 func (r *ReaderService) doBuzz(count int) {
+	if r.isServiceStopped {
+		return
+	}
 	for i := 0; i < count; i++ {
 		err := r.readerModule.Buzz()
 		if err != nil {
@@ -89,6 +107,8 @@ func (r *ReaderService) doActions() {
 					}
 				}
 				r.doBuzz(count)
+			case stopServiceLoop:
+				r.serviceStopped <- true
 			}
 		}
 	}
@@ -97,22 +117,40 @@ func (r *ReaderService) doActions() {
 func (r *ReaderService) ReadCards() {
 	r.logger.Info("service readCard loop started")
 	for {
-		time.Sleep(cardReadingInterval)
+		if r.isServiceStopped {
+			break
+		}
+		time.Sleep(r.cardReadingInterval)
 		r.actions <- actionReadCard
 	}
 }
 
-func (r *ReaderService) OnCardRead() chan string {
+func (r *ReaderService) OnCardRead() chan []string {
 	return r.CardReadInfo
 }
 
-func NewReaderService(readerModule readers.IReaderModule, logger infrastructure.ILogger, reverseCardNumber, useBuzzer bool, maxBuzzerInARow int) *ReaderService {
+func (r *ReaderService) StopCardsReading() chan bool {
+	r.isServiceStopped = true
+	r.actions <- stopServiceLoop
+	return r.serviceStopped
+}
+
+func NewReaderService(readerModule readers.IReaderModule, logger infrastructure.ILogger, reverseCardNumber, useBuzzer bool, maxBuzzerInARow int, cardReadingInterval utils.Duration) *ReaderService {
 
 	service := &ReaderService{
-		CardReadInfo: make(chan string, 1),
-		actions:      make(chan string, 1),
-		logger:       logger,
-		readerModule: readerModule, reverseCardNumber: reverseCardNumber, useBuzzer: useBuzzer, maxBuzzerInARow: maxBuzzerInARow}
+		CardReadInfo:        make(chan []string, 1),
+		actions:             make(chan string, 1),
+		logger:              logger,
+		readerModule:        readerModule,
+		reverseCardNumber:   reverseCardNumber,
+		useBuzzer:           useBuzzer,
+		maxBuzzerInARow:     maxBuzzerInARow,
+		cardReadingInterval: cardReadingInterval.Duration,
+		lastReadCards:       make(map[string]byte),
+		serviceStopped:      make(chan bool, 1),
+	}
+
+	logger.Info("Reader service starting", "cardReadingInterval", cardReadingInterval, "reverseCardNumber", reverseCardNumber)
 
 	go service.doActions()
 

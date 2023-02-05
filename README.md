@@ -6,7 +6,7 @@ Use connected rfid communication reader to read and send cards numbers to the se
 
 `id` - unique identifier of reader service
 
-`device.driver` - now only `M302` is supported
+`device.driver` -  `M302` or `RFIDLib`
 
 ```json
 {
@@ -33,11 +33,11 @@ Use connected rfid communication reader to read and send cards numbers to the se
 
 ### Broker communications
 
-When card is read, service sends message to the broker with topic `reader/{readerId}/card` and payload with card number.
+When cards are read, service sends message to the broker with topic `reader/{readerId}/card` and payload with cards numbers.
 
 ```json
 {
-  "cardNumber": "1234567890",
+  "cardNumbers": ["1234567890"],
   "readerId": "workstation-1-reader-1"
 }
 ```
@@ -68,3 +68,39 @@ status.
   "count": 1
 }
 ```
+
+### RFIDLib driver
+
+Can be used only on windows x64, because uses windows dynamic libraries
+
+This drivers library supports list of readers:
+
+- M201
+- MR113R
+- RD120M
+- RD201
+- RD242
+- SSR100
+- RD5100
+- RD5200
+- RL8000
+- RPAN
+
+in device config section should be specified RFIDLIB driver and RFIDLibSettings settings, last one describes library devices driver, `RPAN` for  example, and comunication settings
+
+```
+{
+  "driver": "RFIDLIB",
+  "RFIDLibSettings": {
+    "libDriver": "RPAN",
+    "communication": {
+      "type": "USB",
+      "settings": {
+        "serialNumber": "2072190002"
+      }
+    }
+  }
+}
+```
+
+All allowed settings you can find in `config.example.json` file

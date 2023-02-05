@@ -35,15 +35,6 @@ func main() {
 		logger.Crit("cannot open device", "error", err)
 		return
 	}
-	defer func() {
-		err := readerModule.Close()
-		if err != nil {
-			logger.Error("cannot close device", "error", err)
-			return
-		}
-		logger.Info("device closed")
-	}()
-
 	logger.Info("device opened")
 
 	mqttBroker, err := infrastructure.NewMqttBroker(
@@ -56,10 +47,15 @@ func main() {
 		logger.Crit("failed to create mqtt broker", "error", err)
 		return
 	}
-	defer mqttBroker.Close()
 	logger.Info("broker connected")
 
-	readerService := services.NewReaderService(readerModule, logger, config.ReverseCardNumber, config.UseBuzzerOnRead, maxBuzzerInARow)
+	readerService := services.NewReaderService(
+		readerModule, logger,
+		config.ReverseCardNumber,
+		config.UseBuzzerOnRead,
+		maxBuzzerInARow,
+		config.CardReadingInterval,
+	)
 	communicationService := services.NewBrokerCommunicationService(mqttBroker, config.Id, logger)
 	logger.Info("services created")
 
@@ -69,15 +65,6 @@ func main() {
 		return
 	}
 	logger.Info("services registered")
-
-	defer func() {
-		err := communicationService.Unregister()
-		if err != nil {
-			logger.Error("failed to unregister service", "error", err)
-			return
-		}
-		logger.Info("services unregistered")
-	}()
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -96,14 +83,14 @@ func main() {
 	mainLoop:
 		for {
 			select {
-			case cardNumber, ok := <-readerService.OnCardRead():
-				logger.Info("service read card", "card", cardNumber)
+			case cardNumbers, ok := <-readerService.OnCardRead():
+				logger.Info("service read card", "card", cardNumbers)
 				if ok {
-					err = communicationService.SendCardNumber(cardNumber)
+					err = communicationService.SendCardNumber(cardNumbers)
 					if err != nil {
 						logger.Error("failed to send card number", "error", err)
 					}
-					logger.Info("service sent card", "card", cardNumber)
+					logger.Info("service sent card", "card", cardNumbers)
 				} else {
 					logger.Error("channel is closed")
 				}
@@ -119,6 +106,28 @@ func main() {
 	signal.Notify(c, os.Interrupt)
 	osSignal := <-c
 	logger.Info("application stopped", "signal", osSignal)
-
 	cancelFunc()
+
+	logger.Info("stopping reader service")
+	<-readerService.StopCardsReading()
+	logger.Info("reader service stopped")
+
+	logger.Info("services unregister attempt")
+	err = communicationService.Unregister()
+	if err != nil {
+		logger.Error("failed to unregister service", "error", err)
+		return
+	}
+	logger.Info("services unregistered")
+
+	logger.Info("closing mqtt broker")
+	mqttBroker.Close()
+	logger.Info("mqtt broker closed")
+
+	logger.Info("closing reader module")
+	err = readerModule.Close()
+	if err != nil {
+		logger.Error("cannot close reader", "error", err)
+	}
+	logger.Info("reader module closed")
 }
