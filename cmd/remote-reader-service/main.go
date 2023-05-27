@@ -11,11 +11,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 )
 
 const maxBuzzerInARow = 3
 
 func main() {
+	var err error
+
 	appDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		panic(err)
@@ -40,23 +43,36 @@ func main() {
 		}, log15.LogfmtFormat()),
 	})
 
-	readerModule, err := readers.CreateReader(config.Device, logger)
-	if err != nil {
-		logger.Crit("cannot open device", "error", err)
-		return
+	var readerModule readers.IReaderModule
+
+	for {
+		readerModule, err = readers.CreateReader(config.Device, logger)
+		if err != nil {
+			logger.Error("cannot open device", "error", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		break
 	}
 	logger.Info("device opened")
 
-	mqttBroker, err := infrastructure.NewMqttBroker(
-		logger,
-		"reader-"+config.Id, config.MqttBroker.URI, config.MqttBroker.Username, config.MqttBroker.Password,
-		true, utils.GetStatusTopic(config.Id),
-		services.NewStatusMessage(config.Id, services.StatusOffline).ToByteArray(),
-	)
-	if err != nil {
-		logger.Crit("failed to create mqtt broker", "error", err)
-		return
+	var mqttBroker *infrastructure.MqttBroker
+
+	for {
+		mqttBroker, err = infrastructure.NewMqttBroker(
+			logger,
+			"reader-"+config.Id, config.MqttBroker.URI, config.MqttBroker.Username, config.MqttBroker.Password,
+			true, utils.GetStatusTopic(config.Id),
+			services.NewStatusMessage(config.Id, services.StatusOffline).ToByteArray(),
+		)
+		if err != nil {
+			logger.Error("failed to create mqtt broker", "error", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		break
 	}
+
 	logger.Info("broker connected")
 
 	readerService := services.NewReaderService(
