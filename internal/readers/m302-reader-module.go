@@ -61,6 +61,10 @@ type M302ReaderModule struct {
 	logger infrastructure.ILogger
 }
 
+func (m *M302ReaderModule) GetReaderInfo() string {
+	return "{}"
+}
+
 func NewM302ReaderModule(deviceSettings models.ConfigM302Settings, logger infrastructure.ILogger) (*M302ReaderModule, error) {
 	config := &serial.Config{
 		Name:        deviceSettings.Port,

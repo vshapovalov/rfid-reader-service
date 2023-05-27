@@ -10,11 +10,16 @@ type BuzzerCount struct {
 }
 
 type StatusInfo struct {
-	ReaderId string `json:"readerId"`
-	Status   string `json:"status"`
+	ReaderId  string `json:"readerId"`
+	Status    string `json:"status"`
+	ExtraInfo string `json:"extraInfo,omitempty"`
 }
 
-func NewStatusInfo(readerId string, status string) *StatusInfo {
+func NewStatusWithExtraInfoMessage(readerId string, status string, extraInfo string) *StatusInfo {
+	return &StatusInfo{ReaderId: readerId, Status: status, ExtraInfo: extraInfo}
+}
+
+func NewStatusMessage(readerId string, status string) *StatusInfo {
 	return &StatusInfo{ReaderId: readerId, Status: status}
 }
 

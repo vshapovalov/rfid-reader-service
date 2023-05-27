@@ -4,6 +4,7 @@
   "reverseCardNumber": false,
   "useBuzzerOnRead": true,
   "cardReadingInterval": "200ms",
+  "readCards": true,
   "device": {
     "driver": "M302",
     "M302Settings": {

@@ -1,6 +1,7 @@
 package readers
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/vshapovalov/rfid-reader-service/internal/infrastructure"
 	"github.com/vshapovalov/rfid-reader-service/internal/models"
@@ -11,12 +12,18 @@ import (
 const driversPath = "drivers\\rfidlib\\drivers"
 
 type RFIDLibReaderModule struct {
-	logger infrastructure.ILogger
-	reader *rfidlib.Reader
+	logger    infrastructure.ILogger
+	reader    *rfidlib.Reader
+	extraInfo string
+}
+
+func (m *RFIDLibReaderModule) GetReaderInfo() string {
+	return m.extraInfo
 }
 
 func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger infrastructure.ILogger) (*RFIDLibReaderModule, error) {
 	drivers, err := rfidlib.LoadDrivers(driversPath)
+	readerExtraInfo := make(map[string]string)
 	if err != nil {
 		return nil, err
 	}
@@ -25,9 +32,13 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 
 	var readerDriver *rfidlib.Driver
 	var targetDriver = strings.ToLower(deviceSettings.LibDriver)
+	var driverName string
 	for _, driver := range drivers {
-		if strings.ToLower(driver.Name) == targetDriver {
+		driverName = strings.ToLower(driver.Name)
+		logger.Info("picking driver", "driver", driverName, "target", targetDriver)
+		if driverName == targetDriver {
 			readerDriver = driver
+			break
 		}
 	}
 
@@ -35,7 +46,11 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 		return nil, fmt.Errorf("target lib driver not found: %s", deviceSettings.LibDriver)
 	}
 
+	readerExtraInfo["driver"] = targetDriver
+
 	var reader *rfidlib.Reader
+
+	readerExtraInfo["communicationType"] = deviceSettings.Communication.Type
 
 	switch strings.ToLower(deviceSettings.Communication.Type) {
 	case "com":
@@ -58,6 +73,7 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 		})
 	case "usb":
 		serialNumber := deviceSettings.Communication.Settings["serialNumber"]
+		readerExtraInfo["serialNumber"] = serialNumber
 		if strings.TrimSpace(serialNumber) == "" {
 			return nil, fmt.Errorf("wrong rfidlib communication serialNumber: %s", serialNumber)
 		}
@@ -67,16 +83,22 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 			return nil, err
 		}
 
-		var foundDevice bool
-		for _, hidItem := range hidItems {
-			if hidItem.SerialNum == serialNumber {
-				foundDevice = true
-				break
+		if len(hidItems) == 1 {
+			logger.Info("RFIDLib only one HID device connected, we will use it", "serialNumber", hidItems[0].SerialNum)
+			serialNumber = hidItems[0].SerialNum
+		} else {
+			var foundDevice bool
+			for _, hidItem := range hidItems {
+				logger.Info("RFIDLib device found", "serialNumber", hidItem.SerialNum)
+				if strings.ToLower(hidItem.SerialNum) == strings.ToLower(serialNumber) {
+					foundDevice = true
+					break
+				}
 			}
-		}
 
-		if !foundDevice {
-			return nil, fmt.Errorf("rfidlib reader device [%s] not found", serialNumber)
+			if !foundDevice {
+				return nil, fmt.Errorf("rfidlib reader device [%s] not found", serialNumber)
+			}
 		}
 
 		reader = rfidlib.NewReader(readerDriver, rfidlib.ReaderUSBOptions{
@@ -85,10 +107,13 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 		})
 	case "net":
 		remoteIp := deviceSettings.Communication.Settings["remoteIp"]
+
 		if strings.TrimSpace(remoteIp) == "" {
 			return nil, fmt.Errorf("wrong rfidlib communication remoteIp: %s", remoteIp)
 		}
 		remotePort := deviceSettings.Communication.Settings["remotePort"]
+		readerExtraInfo["remoteIp"] = remoteIp
+		readerExtraInfo["remotePort"] = remotePort
 		if strings.TrimSpace(remotePort) == "" {
 			return nil, fmt.Errorf("wrong rfidlib communication remotePort: %s", remotePort)
 		}
@@ -105,9 +130,12 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 		return nil, fmt.Errorf("cannot open rfidlib reader: %w", err)
 	}
 
+	extraInfoBytes, _ := json.Marshal(&readerExtraInfo)
+
 	return &RFIDLibReaderModule{
-		logger: logger,
-		reader: reader,
+		logger:    logger,
+		reader:    reader,
+		extraInfo: string(extraInfoBytes),
 	}, nil
 }
 
@@ -116,6 +144,7 @@ func (m *RFIDLibReaderModule) Close() error {
 }
 
 func (m *RFIDLibReaderModule) Buzz() error {
+	m.reader.Buzz()
 	return nil
 }
 

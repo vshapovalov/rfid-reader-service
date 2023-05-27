@@ -11,6 +11,7 @@ type Config struct {
 	ReverseCardNumber   bool             `json:"reverseCardNumber"`
 	UseBuzzerOnRead     bool             `json:"useBuzzerOnRead"`
 	CardReadingInterval utils.Duration   `json:"cardReadingInterval"`
+	ReadCards           bool             `json:"readCards"`
 	Device              ConfigDevice     `json:"device"`
 	MqttBroker          ConfigMqttBroker `json:"mqttBroker"`
 }

@@ -31,11 +31,11 @@ func (b *BrokerCommunicationService) SendCardNumber(cardNumbers []string) error 
 	return b.broker.SendMessage(b.cardReadTopic, NewCardReadInfo(cardNumbers, b.readerId).ToByteArray(), false)
 }
 
-func (b *BrokerCommunicationService) Register() error {
-	return b.broker.SendMessage(b.registerTopic, NewStatusInfo(b.readerId, StatusOnline).ToByteArray(), true)
+func (b *BrokerCommunicationService) Register(extraInfo string) error {
+	return b.broker.SendMessage(b.registerTopic, NewStatusWithExtraInfoMessage(b.readerId, StatusOnline, extraInfo).ToByteArray(), true)
 }
 func (b *BrokerCommunicationService) Unregister() error {
-	return b.broker.SendMessage(b.registerTopic, NewStatusInfo(b.readerId, StatusOffline).ToByteArray(), true)
+	return b.broker.SendMessage(b.registerTopic, NewStatusMessage(b.readerId, StatusOffline).ToByteArray(), true)
 }
 
 func NewBrokerCommunicationService(broker infrastructure.IBroker, readerId string, logger infrastructure.ILogger) *BrokerCommunicationService {

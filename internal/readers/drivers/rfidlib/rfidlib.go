@@ -142,6 +142,13 @@ func (reader *Reader) ReadCards() ([][]byte, error) {
 	return resultCards, nil
 }
 
+func (reader *Reader) Buzz() {
+	operationNumber := rdrCreateSetOutputOperations()
+	rdrAddOneOutputOperation(operationNumber, 1, 1, 1, 1)
+	rdrSetOutput(reader.handler, operationNumber)
+	dNodeDestroy(operationNumber)
+}
+
 func getTagFromReport(tagReportId int) (*ReportedTag, error) {
 	reportISO15693, err := parseTagDataReportISO15693(tagReportId)
 	if err != nil {

@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"github.com/inconshreveable/log15"
 	"github.com/vshapovalov/rfid-reader-service/internal/infrastructure"
 	"github.com/vshapovalov/rfid-reader-service/internal/readers"
 	"github.com/vshapovalov/rfid-reader-service/internal/services"
 	"github.com/vshapovalov/rfid-reader-service/internal/utils"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -28,7 +30,15 @@ func main() {
 		panic(err)
 	}
 
-	logger := infrastructure.NewLog15Logger(config.IsDebugModeEnabled, false)
+	logger := infrastructure.NewLog15Logger(config.IsDebugModeEnabled, false, []log15.Handler{
+		log15.StreamHandler(&lumberjack.Logger{
+			Filename:   "./logs/communication.log",
+			MaxSize:    5,
+			MaxBackups: 3,
+			MaxAge:     7,
+			Compress:   false,
+		}, log15.LogfmtFormat()),
+	})
 
 	readerModule, err := readers.CreateReader(config.Device, logger)
 	if err != nil {
@@ -41,7 +51,7 @@ func main() {
 		logger,
 		"reader-"+config.Id, config.MqttBroker.URI, config.MqttBroker.Username, config.MqttBroker.Password,
 		true, utils.GetStatusTopic(config.Id),
-		services.NewStatusInfo(config.Id, services.StatusOffline).ToByteArray(),
+		services.NewStatusMessage(config.Id, services.StatusOffline).ToByteArray(),
 	)
 	if err != nil {
 		logger.Crit("failed to create mqtt broker", "error", err)
@@ -55,11 +65,12 @@ func main() {
 		config.UseBuzzerOnRead,
 		maxBuzzerInARow,
 		config.CardReadingInterval,
+		config.ReadCards,
 	)
 	communicationService := services.NewBrokerCommunicationService(mqttBroker, config.Id, logger)
 	logger.Info("services created")
 
-	err = communicationService.Register()
+	err = communicationService.Register(readerModule.GetReaderInfo())
 	if err != nil {
 		logger.Crit("failed to register service", "error", err)
 		return

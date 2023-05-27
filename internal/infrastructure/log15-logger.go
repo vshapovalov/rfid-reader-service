@@ -40,7 +40,7 @@ func (l *Log15Logger) IsDebugMode() bool {
 	return l.isDebugMode
 }
 
-func NewLog15Logger(isDebugMode bool, exitOnCrit bool) ILogger {
+func NewLog15Logger(isDebugMode bool, exitOnCrit bool, extraHandlers []log15.Handler) ILogger {
 	logLevel := log15.LvlInfo
 	if isDebugMode {
 		logLevel = log15.LvlDebug
@@ -51,6 +51,8 @@ func NewLog15Logger(isDebugMode bool, exitOnCrit bool) ILogger {
 	handlers := []log15.Handler{
 		log15.StdoutHandler,
 	}
+	handlers = append(handlers, extraHandlers...)
+
 	if exitOnCrit {
 		handlers = append(handlers, log15.FuncHandler(
 			func(r *log15.Record) error {

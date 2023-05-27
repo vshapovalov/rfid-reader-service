@@ -27,6 +27,9 @@ var (
 	comPort_Enum                   = rfidlib_reader.NewProc("COMPort_Enum")
 	comPort_GetEnumItem            = rfidlib_reader.NewProc("COMPort_GetEnumItem")
 	rdr_TagDisconnect              = rfidlib_reader.NewProc("RDR_TagDisconnect")
+	rdr_CreateSetOutputOperations  = rfidlib_reader.NewProc("RDR_CreateSetOutputOperations")
+	rdr_AddOneOutputOperation      = rfidlib_reader.NewProc("RDR_AddOneOutputOperation")
+	rdr_SetOutput                  = rfidlib_reader.NewProc("RDR_SetOutput")
 
 	rfid_aip_iso15693            = syscall.NewLazyDLL("drivers\\rfidlib\\rfidlib_aip_iso15693.dll")
 	iso15693_ParseTagDataReport  = rfid_aip_iso15693.NewProc("ISO15693_ParseTagDataReport")
@@ -78,6 +81,29 @@ func getLoadedReaderDriverOpt(driverNum int, opt string) (string, error) {
 
 func comPortEnum() int {
 	r1, _, _ := comPort_Enum.Call()
+	return int(r1)
+}
+
+func rdrCreateSetOutputOperations() int {
+	r1, _, _ := rdr_CreateSetOutputOperations.Call()
+	return int(r1)
+}
+
+func rdrSetOutput(readerHandler, outputOperation int) int {
+	r1, _, _ := rdr_SetOutput.Call(uintptr(readerHandler), uintptr(outputOperation))
+	return int(r1)
+}
+
+func rdrAddOneOutputOperation(outputOperation int, outputNumber byte, outFrequency, outActiveDuration, outInactiveDuration int) int {
+	outputMode := 3
+	r1, _, _ := rdr_AddOneOutputOperation.Call(
+		uintptr(outputOperation),
+		uintptr(outputNumber),
+		uintptr(outputMode),
+		uintptr(int(byte(outFrequency))),
+		uintptr(int(byte(outActiveDuration&0xff)*100)),
+		uintptr(int(byte(outInactiveDuration&0xff)*100)),
+	)
 	return int(r1)
 }
 
