@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const driversPath = "drivers\\rfidlib\\drivers"
+const driversPath = ".\\drivers\\rfidlib\\drivers"
 
 type RFIDLibReaderModule struct {
 	logger    infrastructure.ILogger
