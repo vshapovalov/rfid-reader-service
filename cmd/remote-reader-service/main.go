@@ -43,6 +43,8 @@ func main() {
 		}, log15.LogfmtFormat()),
 	})
 
+	logger.Info("application started")
+
 	var readerModule readers.IReaderModule
 
 	for {
