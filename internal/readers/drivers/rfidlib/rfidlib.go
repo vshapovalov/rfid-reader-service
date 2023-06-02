@@ -2,6 +2,7 @@ package rfidlib
 
 import (
 	"fmt"
+	"github.com/vshapovalov/rfid-reader-service/internal/infrastructure"
 	"strconv"
 	"strings"
 )
@@ -23,6 +24,7 @@ type Reader struct {
 	antennaCount int
 	connString   string
 	handler      int
+	logger       infrastructure.ILogger
 }
 
 const ReaderUSBAddrModeNone = 0
@@ -143,10 +145,15 @@ func (reader *Reader) ReadCards() ([][]byte, error) {
 }
 
 func (reader *Reader) Buzz() {
+	reader.logger.Info("starting buzzer")
 	operationNumber := rdrCreateSetOutputOperations()
+	reader.logger.Info("rdrCreateSetOutputOperations completed")
 	rdrAddOneOutputOperation(operationNumber, 1, 1, 1, 1)
+	reader.logger.Info("rdrAddOneOutputOperation completed")
 	rdrSetOutput(reader.handler, operationNumber)
+	reader.logger.Info("rdrSetOutput completed")
 	dNodeDestroy(operationNumber)
+	reader.logger.Info("dNodeDestroy completed")
 }
 
 func getTagFromReport(tagReportId int) (*ReportedTag, error) {

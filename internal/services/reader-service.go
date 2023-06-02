@@ -83,6 +83,7 @@ func (r *ReaderService) doBuzz(count int) {
 	if r.isServiceStopped {
 		return
 	}
+	r.logger.Info("buzzer use started", "count", count)
 	for i := 0; i < count; i++ {
 		err := r.readerModule.Buzz()
 		if err != nil {
@@ -90,7 +91,7 @@ func (r *ReaderService) doBuzz(count int) {
 			break
 		}
 	}
-	r.logger.Info("buzzer used", "count", count)
+	r.logger.Info("buzzer use completed", "count", count)
 }
 
 func (r *ReaderService) doActions() {
