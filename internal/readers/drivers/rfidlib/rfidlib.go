@@ -5,6 +5,7 @@ import (
 	"github.com/vshapovalov/rfid-reader-service/internal/infrastructure"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Driver struct {
@@ -72,12 +73,13 @@ func GetReaderConnectionString[T ReaderConnOptions](driverName string, options T
 	return builder.String()
 }
 
-func NewReader[T ReaderConnOptions](driver *Driver, options T) *Reader {
+func NewReader[T ReaderConnOptions](driver *Driver, logger infrastructure.ILogger, options T) *Reader {
 	reader := Reader{
 		driver:       driver,
 		antennaCount: 0,
 		connString:   GetReaderConnectionString(driver.Name, options),
 		handler:      0,
+		logger:       logger,
 	}
 	return &reader
 }
@@ -146,14 +148,25 @@ func (reader *Reader) ReadCards() ([][]byte, error) {
 
 func (reader *Reader) Buzz() {
 	reader.logger.Info("starting buzzer")
+
+	_ = reader.Close()
+	err := reader.Open()
+	if err != nil {
+		reader.logger.Error("cannot open reader")
+		return
+	}
+	reader.logger.Info("reader opened")
 	operationNumber := rdrCreateSetOutputOperations()
 	reader.logger.Info("rdrCreateSetOutputOperations completed")
 	rdrAddOneOutputOperation(operationNumber, 1, 1, 1, 1)
 	reader.logger.Info("rdrAddOneOutputOperation completed")
-	rdrSetOutput(reader.handler, operationNumber)
-	reader.logger.Info("rdrSetOutput completed")
-	dNodeDestroy(operationNumber)
-	reader.logger.Info("dNodeDestroy completed")
+	go func() {
+		rdrSetOutput(reader.handler, operationNumber)
+		reader.logger.Info("rdrSetOutput completed")
+		dNodeDestroy(operationNumber)
+		reader.logger.Info("dNodeDestroy completed")
+	}()
+	time.Sleep(1200 * time.Millisecond)
 }
 
 func getTagFromReport(tagReportId int) (*ReportedTag, error) {

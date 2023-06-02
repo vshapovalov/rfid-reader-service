@@ -66,7 +66,7 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 		if strings.TrimSpace(frame) == "" {
 			return nil, fmt.Errorf("wrong rfidlib communication frame: %s", frame)
 		}
-		reader = rfidlib.NewReader(readerDriver, rfidlib.ReaderCOMOptions{
+		reader = rfidlib.NewReader(readerDriver, logger, rfidlib.ReaderCOMOptions{
 			ComPort: comPort,
 			ComBand: comBand,
 			Frame:   frame,
@@ -101,7 +101,7 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 			}
 		}
 
-		reader = rfidlib.NewReader(readerDriver, rfidlib.ReaderUSBOptions{
+		reader = rfidlib.NewReader(readerDriver, logger, rfidlib.ReaderUSBOptions{
 			AddrMode:     rfidlib.ReaderUSBAddrModeSerial,
 			SerialNumber: serialNumber,
 		})
@@ -117,7 +117,7 @@ func NewRFIDLibReaderModule(deviceSettings models.ConfigRFIDLibSettings, logger 
 		if strings.TrimSpace(remotePort) == "" {
 			return nil, fmt.Errorf("wrong rfidlib communication remotePort: %s", remotePort)
 		}
-		reader = rfidlib.NewReader(readerDriver, rfidlib.ReaderNETOptions{
+		reader = rfidlib.NewReader(readerDriver, logger, rfidlib.ReaderNETOptions{
 			RemoteIp:   remoteIp,
 			RemotePort: remotePort,
 		})
